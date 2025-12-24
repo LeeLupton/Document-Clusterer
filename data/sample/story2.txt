@@ -1,0 +1,1 @@
+A second tiny document lives on the web at http://example.org and mentions numbers like 42.

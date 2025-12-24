@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
 from . import clean_directory, cluster_documents, save_documents
-from .cleaning import env_path as cleaning_env_path
+from .cleaning import CleaningOptions, env_path as cleaning_env_path
 from .model import env_int as model_env_int, env_path as model_env_path
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -28,6 +29,59 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=cleaning_env_path("WORD_LIST_PATH", "data/one-grams.txt"),
         help="Path to newline-delimited word list (default: %(default)s or WORD_LIST_PATH)",
+    )
+    clean_parser.add_argument(
+        "--stop-words",
+        type=Path,
+        default=os.getenv("STOP_WORDS_PATH"),
+        help="Optional stop-word file to merge with defaults (or override if --no-default-stopwords)",
+    )
+    clean_parser.add_argument(
+        "--extra-stopword",
+        action="append",
+        default=[],
+        help="Additional stop words (can be repeated)",
+    )
+    clean_parser.add_argument(
+        "--pipeline",
+        choices=["nltk", "spacy"],
+        default=os.getenv("CLEANING_PIPELINE", "nltk"),
+        help="Tokenization pipeline to use (default: %(default)s or CLEANING_PIPELINE)",
+    )
+    clean_parser.add_argument(
+        "--spacy-model",
+        default=os.getenv("SPACY_MODEL", "en_core_web_sm"),
+        help="spaCy model to load when using the spaCy pipeline (default: %(default)s or SPACY_MODEL)",
+    )
+    clean_parser.add_argument(
+        "--min-token-length",
+        type=int,
+        default=int(os.getenv("MIN_TOKEN_LENGTH", "3")),
+        help="Minimum token length to keep (default: %(default)s or MIN_TOKEN_LENGTH)",
+    )
+    clean_parser.add_argument(
+        "--no-lowercase",
+        action="store_false",
+        dest="lowercase",
+        help="Disable lowercasing during cleaning",
+    )
+    clean_parser.add_argument(
+        "--keep-urls",
+        action="store_false",
+        dest="strip_urls",
+        help="Keep URLs instead of removing them",
+    )
+    clean_parser.add_argument(
+        "--keep-numbers",
+        action="store_false",
+        dest="strip_numbers",
+        help="Keep numbers instead of removing them",
+    )
+    clean_parser.add_argument(
+        "--no-default-stopwords",
+        action="store_false",
+        dest="include_default_stopwords",
+        help="Do not use NLTK's default English stopword list",
     )
     clean_parser.add_argument(
         "--output",
@@ -76,7 +130,23 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     if args.command == "clean":
-        documents = clean_directory(args.stories_dir, args.word_list)
+        options = CleaningOptions(
+            lowercase=args.lowercase,
+            strip_urls=args.strip_urls,
+            strip_numbers=args.strip_numbers,
+            pipeline=args.pipeline,
+            spacy_model=args.spacy_model,
+            min_token_length=args.min_token_length,
+            include_default_stopwords=args.include_default_stopwords,
+        )
+
+        documents = clean_directory(
+            args.stories_dir,
+            args.word_list,
+            stop_words_path=args.stop_words,
+            extra_stopwords=args.extra_stopword,
+            options=options,
+        )
         save_documents(documents, args.output)
     elif args.command == "cluster":
         cluster_documents(

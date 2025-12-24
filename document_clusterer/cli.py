@@ -8,7 +8,7 @@ from pathlib import Path
 
 from . import clean_directory, cluster_documents, save_documents
 from .cleaning import CleaningOptions, env_path as cleaning_env_path
-from .model import env_int as model_env_int, env_path as model_env_path
+from .model import env_path as model_env_path
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
@@ -112,14 +112,72 @@ def build_parser() -> argparse.ArgumentParser:
     cluster_parser.add_argument(
         "--clusters",
         type=int,
-        default=model_env_int("CLUSTER_COUNT", 10),
-        help="Number of clusters to generate (default: %(default)s or CLUSTER_COUNT)",
+        default=int(os.getenv("CLUSTER_COUNT", "10")),
+        help="Number of clusters to generate when using KMeans (default: %(default)s or CLUSTER_COUNT)",
     )
     cluster_parser.add_argument(
-        "--rank",
+        "--cluster-method",
+        choices=["kmeans", "hdbscan"],
+        default=os.getenv("CLUSTER_METHOD", "kmeans"),
+        help="Clustering algorithm to use (default: %(default)s or CLUSTER_METHOD)",
+    )
+    cluster_parser.add_argument(
+        "--model-name",
+        default=os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
+        help="SentenceTransformers model to encode documents (default: %(default)s or EMBEDDING_MODEL)",
+    )
+    cluster_parser.add_argument(
+        "--kmeans-random-state",
         type=int,
-        default=model_env_int("SVD_RANK", 10),
-        help="Rank to use for SVD approximation (default: %(default)s or SVD_RANK)",
+        default=int(os.getenv("KMEANS_RANDOM_STATE", "42")),
+        help="Random seed for KMeans (default: %(default)s or KMEANS_RANDOM_STATE)",
+    )
+    cluster_parser.add_argument(
+        "--hdbscan-min-cluster-size",
+        type=int,
+        default=int(os.getenv("HDBSCAN_MIN_CLUSTER_SIZE", "5")),
+        help="Minimum cluster size for HDBSCAN (default: %(default)s or HDBSCAN_MIN_CLUSTER_SIZE)",
+    )
+    cluster_parser.add_argument(
+        "--hdbscan-min-samples",
+        type=int,
+        default=int(os.getenv("HDBSCAN_MIN_SAMPLES")) if os.getenv("HDBSCAN_MIN_SAMPLES") else None,
+        help="Minimum samples for HDBSCAN (default: %(default)s or HDBSCAN_MIN_SAMPLES)",
+    )
+    cluster_parser.add_argument(
+        "--reduction",
+        choices=["umap", "pca", "none"],
+        default=os.getenv("REDUCTION_METHOD", "umap"),
+        help="Dimensionality reduction for visualization (default: %(default)s or REDUCTION_METHOD)",
+    )
+    cluster_parser.add_argument(
+        "--reduction-dim",
+        type=int,
+        default=int(os.getenv("REDUCTION_DIM", "2")),
+        help="Output dimensions for visualization (default: %(default)s or REDUCTION_DIM)",
+    )
+    cluster_parser.add_argument(
+        "--umap-neighbors",
+        type=int,
+        default=int(os.getenv("UMAP_NEIGHBORS", "15")),
+        help="Number of neighbors for UMAP (default: %(default)s or UMAP_NEIGHBORS)",
+    )
+    cluster_parser.add_argument(
+        "--umap-min-dist",
+        type=float,
+        default=float(os.getenv("UMAP_MIN_DIST", "0.1")),
+        help="Minimum distance for UMAP (default: %(default)s or UMAP_MIN_DIST)",
+    )
+    cluster_parser.add_argument(
+        "--summary-terms",
+        type=int,
+        default=int(os.getenv("SUMMARY_TERMS", "10")),
+        help="Top terms per cluster to include in summaries (default: %(default)s or SUMMARY_TERMS)",
+    )
+    cluster_parser.add_argument(
+        "--assignments-basename",
+        default=os.getenv("ASSIGNMENTS_BASENAME", "cluster_assignments"),
+        help="Base filename for assignment JSON/CSV outputs (default: %(default)s or ASSIGNMENTS_BASENAME)",
     )
 
     return parser
@@ -149,12 +207,29 @@ def main(argv: list[str] | None = None) -> None:
         )
         save_documents(documents, args.output)
     elif args.command == "cluster":
+        reduction_method = args.reduction
+        if reduction_method == "none":
+            reduction_method = None
+
+        hdbscan_min_samples = (
+            None if args.hdbscan_min_samples is None else int(args.hdbscan_min_samples)
+        )
         cluster_documents(
             data_path=args.input_file,
             stories_dir=args.stories_dir,
             output_dir=args.output_dir,
-            cluster_count=args.clusters,
-            rank=args.rank,
+            model_name=args.model_name,
+            cluster_method=args.cluster_method,
+            cluster_count=args.clusters if args.cluster_method == "kmeans" else None,
+            kmeans_random_state=args.kmeans_random_state,
+            hdbscan_min_cluster_size=args.hdbscan_min_cluster_size,
+            hdbscan_min_samples=hdbscan_min_samples,
+            reduction_method=reduction_method,
+            reduction_dim=args.reduction_dim,
+            umap_neighbors=args.umap_neighbors,
+            umap_min_dist=args.umap_min_dist,
+            summary_top_n=args.summary_terms,
+            assignments_basename=args.assignments_basename,
         )
     else:
         parser.error("No command provided")

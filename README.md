@@ -1,6 +1,6 @@
 # Document-Clusterer
 
-A simple document clustering utility using singular value decomposition (SVD) on a corpus of CNN stories.
+A simple document clustering utility that cleans text, builds SentenceTransformers embeddings, and clusters with KMeans or HDBSCAN.
 
 ## Installation
 
@@ -48,7 +48,15 @@ document-clusterer clean --stories-dir data/sample --output data/sample.json
 ### Cluster cleaned output
 
 ```bash
-document-clusterer cluster --input-file all_stories.json --stories-dir data/cnn-stories --output-dir clusteredDocuments --clusters 10 --rank 10
+document-clusterer cluster \
+  --input-file all_stories.json \
+  --stories-dir data/cnn-stories \
+  --output-dir clusteredDocuments \
+  --model-name all-MiniLM-L6-v2 \
+  --cluster-method kmeans \
+  --clusters 10 \
+  --reduction umap \
+  --reduction-dim 2
 ```
 
 Environment variable defaults:
@@ -56,8 +64,21 @@ Environment variable defaults:
 * `INPUT_JSON` – cleaned JSON input (default: `all_stories.json`)
 * `STORIES_DIR` – directory containing original stories (default: `data/cnn-stories`)
 * `CLUSTER_OUTPUT_DIR` – output directory for clustered documents (default: `clusteredDocuments`)
-* `CLUSTER_COUNT` – number of clusters to create (default: `10`)
-* `SVD_RANK` – rank used for the SVD approximation (default: `10`)
+* `CLUSTER_COUNT` – number of clusters for KMeans (default: `10`)
+* `CLUSTER_METHOD` – `kmeans` or `hdbscan` (default: `kmeans`)
+* `EMBEDDING_MODEL` – SentenceTransformers model name (default: `all-MiniLM-L6-v2`)
+* `KMEANS_RANDOM_STATE` – seed for KMeans initialization (default: `42`)
+* `HDBSCAN_MIN_CLUSTER_SIZE` / `HDBSCAN_MIN_SAMPLES` – HDBSCAN hyperparameters
+* `REDUCTION_METHOD` – `umap`, `pca`, or `none` (default: `umap`)
+* `REDUCTION_DIM`, `UMAP_NEIGHBORS`, `UMAP_MIN_DIST` – dimensionality reduction controls
+* `SUMMARY_TERMS` – number of top terms per cluster in summaries (default: `10`)
+* `ASSIGNMENTS_BASENAME` – base filename for assignment JSON/CSV outputs (default: `cluster_assignments`)
+
+Outputs now include:
+
+* `cluster_assignments.json` and `.csv` – cluster labels (and visualization coordinates if enabled)
+* `cluster_summaries.json` / `.txt` – human-friendly top terms per cluster
+* Subdirectories under `clusteredDocuments/` for each cluster label (with `noise` for HDBSCAN outliers)
 
 ## Development
 

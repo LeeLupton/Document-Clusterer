@@ -23,7 +23,7 @@ py -m venv .venv
 2) Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 3) Download the NLTK data used by the cleaner (one-time):
@@ -113,7 +113,6 @@ document-clusterer cluster \
 On Windows, you can run the same commands in PowerShell. If `document-clusterer` is not on your `PATH`, use the module form instead:
 
 ```powershell
-python -m document_clusterer.cli clean --stories-dir data\sample --output data\sample_cleaned.json
 python -m document_clusterer.cli clean --stories-dir data\\sample --output data\\sample.json
 python -m document_clusterer.cli cluster --input-file data\\sample_cleaned.json --stories-dir data\\sample --output-dir clusteredDocuments\\sample
 ```

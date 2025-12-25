@@ -42,10 +42,7 @@ def env_int(var_name: str, default: int) -> int:
 
 def _ensure_file_exists(path: Path, description: str) -> None:
     if not path.exists():
-        raise FileNotFoundError(
-            f"{description} does not exist: {path.resolve()} (cwd: {Path.cwd()}) "
-            "If you are using the sample data, run the clean step to generate it."
-        )
+
     if not path.is_file():
         raise ValueError(f"{description} is not a file: {path}")
 

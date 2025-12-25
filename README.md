@@ -13,6 +13,13 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
+On Windows (PowerShell):
+
+```powershell
+py -m venv .venv
+.\\.venv\\Scripts\\Activate.ps1
+```
+
 2) Install dependencies:
 
 ```bash
@@ -101,6 +108,14 @@ document-clusterer cluster \
   --clusters 10 \
   --reduction umap \
   --reduction-dim 2
+```
+
+On Windows, you can run the same commands in PowerShell. If `document-clusterer` is not on your `PATH`, use the module form instead:
+
+```powershell
+python -m document_clusterer.cli clean --stories-dir data\sample --output data\sample_cleaned.json
+python -m document_clusterer.cli clean --stories-dir data\\sample --output data\\sample.json
+python -m document_clusterer.cli cluster --input-file data\\sample_cleaned.json --stories-dir data\\sample --output-dir clusteredDocuments\\sample
 ```
 
 Environment variable defaults:

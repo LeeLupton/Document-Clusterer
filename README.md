@@ -2,6 +2,48 @@
 
 A simple document clustering utility that cleans text, builds SentenceTransformers embeddings, and clusters with KMeans or HDBSCAN.
 
+## Setup
+
+Requirements: Python 3.10+.
+
+1) Create and activate a virtual environment (recommended):
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+2) Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3) Download the NLTK data used by the cleaner (one-time):
+
+```bash
+python - <<'PY'
+import nltk
+
+for resource in [
+    "punkt",
+    "punkt_tab",
+    "averaged_perceptron_tagger",
+    "averaged_perceptron_tagger_eng",
+    "stopwords",
+    "wordnet",
+    "omw-1.4",
+]:
+    nltk.download(resource)
+PY
+```
+
+4) (Optional) Extras for the notebook and visualizations:
+
+```bash
+pip install pandas matplotlib seaborn plotly
+```
+
 ## Installation
 
 ```bash
@@ -15,6 +57,8 @@ pip install -e .
 ```
 
 ## Usage
+
+## Quickstart
 
 ### Clean stories
 
@@ -80,6 +124,29 @@ Outputs now include:
 * `cluster_summaries.json` / `.txt` – human-friendly top terms per cluster
 * Subdirectories under `clusteredDocuments/` for each cluster label (with `noise` for HDBSCAN outliers)
 
+### End-to-end example (sample data)
+
+```bash
+# Clean a lightweight demo corpus
+document-clusterer clean \
+  --stories-dir data/sample \
+  --word-list data/one-grams.txt \
+  --output data/sample_cleaned.json
+
+# Cluster with KMeans + UMAP for 2D visualization
+document-clusterer cluster \
+  --input-file data/sample_cleaned.json \
+  --stories-dir data/sample \
+  --output-dir clusteredDocuments/sample \
+  --model-name all-MiniLM-L6-v2 \
+  --cluster-method kmeans \
+  --clusters 3 \
+  --reduction umap \
+  --reduction-dim 2
+```
+
+After clustering, check `clusteredDocuments/sample/cluster_assignments.json` for labels and UMAP coordinates and `cluster_summaries.json` for the top keywords per cluster.
+
 ## Development
 
 Both legacy scripts remain as compatibility wrappers:
@@ -88,3 +155,25 @@ Both legacy scripts remain as compatibility wrappers:
 * `model.py` delegates to the packaged clustering CLI
 
 Feel free to extend `document_clusterer/` to add additional cleaning or clustering options.
+
+## Architecture overview
+
+* **CLI entrypoints** – `document_clusterer/cli.py` exposes `clean` and `cluster` subcommands plus convenience wrappers (`document-clusterer-clean`, `document-clusterer-cluster`).
+* **Cleaning pipeline** – `document_clusterer/cleaning.py` loads `.txt` files, normalizes text (URL/number stripping, lowercasing), tokenizes with NLTK or spaCy, removes stop words/short tokens, lemmatizes, and writes structured JSON via `save_documents`.
+* **Embedding + clustering** – `document_clusterer/model.py` encodes documents with SentenceTransformers (`embed_documents`), clusters with KMeans or HDBSCAN (`run_clustering`), optionally reduces dimensions with UMAP/PCA for visualization (`reduce_embeddings`), and summarizes top terms per cluster (`summarize_clusters`).
+* **Outputs** – assignments and summaries are persisted as JSON/CSV/text, and the original `.txt` files are copied into per-cluster folders for inspection.
+
+## Notebook walkthrough
+
+A portfolio-ready Jupyter notebook lives in `notebooks/Document_Clusterer_Demo.ipynb`. It demonstrates:
+
+1. Building a small themed corpus on the fly (tech, sports, health).
+2. Cleaning the text with `CleaningOptions` and viewing tokenized results.
+3. Running KMeans + UMAP via `cluster_documents` to produce assignments and summaries.
+4. Visualizing clusters in 2D and charting top keywords per cluster with inline matplotlib outputs.
+
+Launch with:
+
+```bash
+jupyter notebook notebooks/Document_Clusterer_Demo.ipynb
+```

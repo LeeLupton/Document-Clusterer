@@ -13,17 +13,10 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-On Windows (PowerShell):
-
-```powershell
-py -m venv .venv
-.\\.venv\\Scripts\\Activate.ps1
-```
-
 2) Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 3) Download the NLTK data used by the cleaner (one-time):

@@ -41,18 +41,6 @@ def env_int(var_name: str, default: int) -> int:
 
 
 def _ensure_file_exists(path: Path, description: str) -> None:
-    if not path.exists():
-        raise FileNotFoundError(f"{description} does not exist: {path}")
-    if not path.is_file():
-        raise ValueError(f"{description} is not a file: {path}")
-
-
-def _ensure_dir_exists(path: Path, description: str) -> None:
-    if not path.exists():
-        raise FileNotFoundError(f"{description} does not exist: {path}")
-    if not path.is_dir():
-        raise NotADirectoryError(f"{description} is not a directory: {path}")
-
 
 def load_documents(data_path: Path) -> List[CleanedDocument]:
     _ensure_file_exists(data_path, "Input data file")

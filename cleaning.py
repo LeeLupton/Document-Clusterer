@@ -7,6 +7,5 @@ or install the package and run `document-clusterer clean`.
 
 from document_clusterer.cli import clean_cli
 
-
 if __name__ == "__main__":
     clean_cli()

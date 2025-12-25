@@ -6,14 +6,18 @@ import logging
 import os
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence
+from typing import Dict, List, Sequence, cast
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from numpy.typing import NDArray
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
+from document_clusterer.types import CleanedDocument
+
 LOGGER = logging.getLogger(__name__)
+FloatArray = NDArray[np.float64]
+IntArray = NDArray[np.int_]
 
 
 def env_path(var_name: str, default: str) -> Path:
@@ -24,13 +28,16 @@ def env_int(var_name: str, default: int) -> int:
     return int(os.getenv(var_name, str(default)))
 
 
-def load_documents(data_path: Path) -> List[Dict]:
+def load_documents(data_path: Path) -> List[CleanedDocument]:
     LOGGER.info("Loading documents from %s", data_path)
     with data_path.open("r", encoding="utf-8") as infile:
-        return json.load(infile)
+        loaded = json.load(infile)
+    return cast(List[CleanedDocument], loaded)
 
 
-def embed_documents(documents: Sequence[Dict], model_name: str) -> np.ndarray:
+def embed_documents(documents: Sequence[CleanedDocument], model_name: str) -> FloatArray:
+    from sentence_transformers import SentenceTransformer
+
     LOGGER.info("Encoding %d documents with SentenceTransformer model '%s'", len(documents), model_name)
     model = SentenceTransformer(model_name)
     texts = []
@@ -40,18 +47,34 @@ def embed_documents(documents: Sequence[Dict], model_name: str) -> np.ndarray:
         else:
             texts.append(" ".join(document.get("words", [])))
     embeddings = model.encode(texts, show_progress_bar=True)
-    return np.asarray(embeddings)
+    return cast(FloatArray, np.asarray(embeddings, dtype=np.float64))
+
+
+def build_document_term_matrix(documents: Sequence[CleanedDocument]) -> tuple[IntArray, list[str]]:
+    """Create a simple document-term matrix from cleaned documents."""
+
+    vocabulary = sorted({token for document in documents for token in document.get("words", [])})
+    vocab_index = {term: idx for idx, term in enumerate(vocabulary)}
+    matrix: IntArray = np.zeros((len(documents), len(vocabulary)), dtype=int)
+
+    for row_index, document in enumerate(documents):
+        token_counts = Counter(document.get("words", []))
+        for token, count in token_counts.items():
+            column_index = vocab_index[token]
+            matrix[row_index, column_index] = count
+
+    return matrix, vocabulary
 
 
 def run_clustering(
-    embeddings: np.ndarray,
+    embeddings: FloatArray,
     *,
     cluster_method: str,
     cluster_count: int | None,
     kmeans_random_state: int | None,
     hdbscan_min_cluster_size: int,
     hdbscan_min_samples: int | None,
-) -> np.ndarray:
+) -> IntArray:
     if cluster_method == "kmeans":
         if cluster_count is None:
             raise ValueError("cluster_count must be provided when using kmeans clustering.")
@@ -59,7 +82,7 @@ def run_clustering(
             raise ValueError("cluster_count must be at least 1.")
         LOGGER.info("Running KMeans with k=%d", cluster_count)
         model = KMeans(n_clusters=cluster_count, random_state=kmeans_random_state, n_init="auto")
-        return model.fit_predict(embeddings)
+        return cast(IntArray, model.fit_predict(embeddings))
 
     if cluster_method == "hdbscan":
         try:
@@ -77,33 +100,33 @@ def run_clustering(
             min_samples=hdbscan_min_samples,
             metric="euclidean",
         )
-        return model.fit_predict(embeddings)
+        return cast(IntArray, model.fit_predict(embeddings))
 
     raise ValueError(f"Unknown cluster_method '{cluster_method}'. Expected 'kmeans' or 'hdbscan'.")
 
 
 def reduce_embeddings(
-    embeddings: np.ndarray,
+    embeddings: FloatArray,
     *,
     reduction_method: str | None,
     reduction_dim: int,
     umap_neighbors: int,
     umap_min_dist: float,
     random_state: int | None,
-) -> np.ndarray | None:
+) -> FloatArray | None:
     if reduction_method is None or reduction_method == "none":
         return None
 
     if reduction_method == "pca":
         LOGGER.info("Reducing embeddings with PCA to %d dimensions", reduction_dim)
         reducer = PCA(n_components=reduction_dim, random_state=random_state)
-        return reducer.fit_transform(embeddings)
+        return cast(FloatArray, reducer.fit_transform(embeddings))
 
     if reduction_method == "umap":
         try:
-            import umap  # type: ignore
+            import umap
         except ImportError:  # pragma: no cover - optional dependency
-            import umap.umap_ as umap  # type: ignore
+            import umap.umap_ as umap
         LOGGER.info(
             "Reducing embeddings with UMAP to %d dimensions (n_neighbors=%d, min_dist=%.2f)",
             reduction_dim,
@@ -116,13 +139,17 @@ def reduce_embeddings(
             min_dist=umap_min_dist,
             random_state=random_state,
         )
-        return reducer.fit_transform(embeddings)
+        return cast(FloatArray, reducer.fit_transform(embeddings))
 
     raise ValueError(f"Unknown reduction_method '{reduction_method}'. Expected 'umap', 'pca', or 'none'.")
 
 
-def summarize_clusters(documents: Sequence[Dict], labels: np.ndarray, top_n: int) -> Dict[int, list[tuple[str, int]]]:
-    clustered_terms: Dict[int, Counter] = defaultdict(Counter)
+def summarize_clusters(
+    documents: Sequence[CleanedDocument],
+    labels: IntArray,
+    top_n: int,
+) -> Dict[int, list[tuple[str, int]]]:
+    clustered_terms: Dict[int, Counter[str]] = defaultdict(Counter)
     for document, label in zip(documents, labels):
         clustered_terms[int(label)].update(document.get("words", []))
 
@@ -133,20 +160,20 @@ def summarize_clusters(documents: Sequence[Dict], labels: np.ndarray, top_n: int
 
 
 def save_assignments(
-    documents: Sequence[Dict],
-    labels: np.ndarray,
+    documents: Sequence[CleanedDocument],
+    labels: IntArray,
     output_dir: Path,
     *,
     basename: str,
-    reduced_embeddings: np.ndarray | None,
+    reduced_embeddings: FloatArray | None,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / f"{basename}.json"
     csv_path = output_dir / f"{basename}.csv"
 
-    records: list[dict] = []
+    records: list[dict[str, int | str | float]] = []
     for idx, (document, label) in enumerate(zip(documents, labels)):
-        record: dict = {
+        record: dict[str, int | str | float] = {
             "id": idx,
             "filename": document["filename"],
             "cluster": int(label),
@@ -176,7 +203,10 @@ def save_summaries(summaries: Dict[int, list[tuple[str, int]]], output_dir: Path
     LOGGER.info("Writing cluster summaries to %s and %s", json_path, text_path)
     with json_path.open("w", encoding="utf-8") as outfile:
         json.dump(
-            {str(label): [{"term": term, "count": count} for term, count in terms] for label, terms in summaries.items()},
+            {
+                str(label): [{"term": term, "count": count} for term, count in terms]
+                for label, terms in summaries.items()
+            },
             outfile,
             ensure_ascii=False,
             indent=2,
@@ -275,4 +305,3 @@ def cluster_documents(
 
     copy_clusters(cluster_to_documents, stories_dir, output_dir)
     return cluster_to_documents
-

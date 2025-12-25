@@ -7,6 +7,5 @@ or install the package and run `document-clusterer cluster`.
 
 from document_clusterer.cli import cluster_cli
 
-
 if __name__ == "__main__":
     cluster_cli()

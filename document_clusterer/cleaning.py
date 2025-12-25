@@ -6,11 +6,13 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable, List, Sequence, Set
+from typing import Any, Callable, Iterable, List, Sequence, Set
 
 from nltk import pos_tag, word_tokenize
 from nltk.corpus import stopwords, wordnet
 from nltk.stem.wordnet import WordNetLemmatizer
+
+from document_clusterer.types import CleanedDocument
 
 LOGGER = logging.getLogger(__name__)
 
@@ -99,7 +101,9 @@ def normalize_text(text: str, options: CleaningOptions) -> str:
     return cleaned
 
 
-def _nltk_tokenizer(stop_words: Set[str], allowed_words: Set[str] | None, options: CleaningOptions) -> Callable[[str], List[str]]:
+def _nltk_tokenizer(
+    stop_words: Set[str], allowed_words: Set[str] | None, options: CleaningOptions
+) -> Callable[[str], List[str]]:
     lemma = WordNetLemmatizer()
 
     def tokenizer(text: str) -> List[str]:
@@ -119,17 +123,17 @@ def _nltk_tokenizer(stop_words: Set[str], allowed_words: Set[str] | None, option
 
 def _wordnet_pos(tag: str) -> str:
     if tag.startswith("J"):
-        return wordnet.ADJ
+        return str(wordnet.ADJ)
     if tag.startswith("V"):
-        return wordnet.VERB
+        return str(wordnet.VERB)
     if tag.startswith("N"):
-        return wordnet.NOUN
+        return str(wordnet.NOUN)
     if tag.startswith("R"):
-        return wordnet.ADV
-    return wordnet.NOUN
+        return str(wordnet.ADV)
+    return str(wordnet.NOUN)
 
 
-def _load_spacy_model(model_name: str):
+def _load_spacy_model(model_name: str) -> Any:
     try:
         import spacy
     except ImportError as exc:  # pragma: no cover - optional dependency
@@ -143,7 +147,9 @@ def _load_spacy_model(model_name: str):
         ) from exc
 
 
-def _spacy_tokenizer(stop_words: Set[str], allowed_words: Set[str] | None, options: CleaningOptions) -> Callable[[str], List[str]]:
+def _spacy_tokenizer(
+    stop_words: Set[str], allowed_words: Set[str] | None, options: CleaningOptions
+) -> Callable[[str], List[str]]:
     nlp = _load_spacy_model(options.spacy_model)
 
     def tokenizer(text: str) -> List[str]:
@@ -185,7 +191,7 @@ def clean_documents(
     stop_words_path: Path | None = None,
     extra_stopwords: Sequence[str] | None = None,
     options: CleaningOptions | None = None,
-) -> List[dict]:
+) -> List[CleanedDocument]:
     """Clean a pre-loaded corpus and return structured documents."""
 
     cleaning_options = options or CleaningOptions()
@@ -198,21 +204,23 @@ def clean_documents(
     )
     tokenizer = build_tokenizer(stop_words, allowed_words, cleaning_options)
 
-    documents: List[dict] = []
+    documents: List[CleanedDocument] = []
     for filename, text in corpus:
         normalized_text = normalize_text(text, cleaning_options)
         tokens = tokenizer(normalized_text)
-        documents.append({
-            "filename": filename,
-            "text": text,
-            "words": tokens,
-        })
+        documents.append(
+            {
+                "filename": filename,
+                "text": text,
+                "words": tokens,
+            }
+        )
 
     LOGGER.info("Cleaned %d documents", len(documents))
     return documents
 
 
-def write_json(documents: Iterable[dict], output_path: Path) -> None:
+def write_json(documents: Iterable[CleanedDocument], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     LOGGER.info("Writing cleaned stories to %s", output_path)
     with output_path.open("w", encoding="utf-8") as outfile:
@@ -226,7 +234,7 @@ def clean_directory(
     stop_words_path: Path | None = None,
     extra_stopwords: Sequence[str] | None = None,
     options: CleaningOptions | None = None,
-) -> List[dict]:
+) -> List[CleanedDocument]:
     """Clean all .txt files in the provided directory."""
 
     corpus = load_corpus(stories_dir)
@@ -239,7 +247,7 @@ def clean_directory(
     )
 
 
-def save_documents(documents: Iterable[dict], output_path: Path) -> None:
+def save_documents(documents: Iterable[CleanedDocument], output_path: Path) -> None:
     write_json(documents, output_path)
 
 

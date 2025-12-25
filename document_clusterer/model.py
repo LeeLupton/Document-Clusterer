@@ -41,25 +41,7 @@ def env_int(var_name: str, default: int) -> int:
 
 
 def _ensure_file_exists(path: Path, description: str) -> None:
-    resolved = path.resolve()
-    if not path.exists():
-        raise FileNotFoundError(
-            f"{description} does not exist: {resolved} (cwd: {Path.cwd()}) "
-            "If you are using the sample data, run the clean step to generate it."
-        )
-    if not path.is_file():
-        raise ValueError(f"{description} is not a file: {resolved}")
 
-
-def _ensure_dir_exists(path: Path, description: str) -> None:
-    resolved = path.resolve()
-    if not path.exists():
-        raise FileNotFoundError(
-            f"{description} does not exist: {resolved} (cwd: {Path.cwd()}) "
-            "Ensure you run commands from the project root or provide an absolute path."
-        )
-    if not path.is_dir():
-        raise NotADirectoryError(f"{description} is not a directory: {resolved}")
 
 
 def load_documents(data_path: Path) -> List[CleanedDocument]:

@@ -6,7 +6,7 @@ import logging
 import os
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Dict, List, Sequence, cast
+from typing import Dict, List, Sequence, TypedDict, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -18,6 +18,18 @@ from document_clusterer.types import CleanedDocument
 LOGGER = logging.getLogger(__name__)
 FloatArray = NDArray[np.float64]
 IntArray = NDArray[np.int_]
+
+
+class TermCount(TypedDict):
+    term: str
+    count: int
+
+
+class ClusterResult(TypedDict):
+    cluster: str
+    document_count: int
+    documents: list[str]
+    top_terms: list[TermCount]
 
 
 def env_path(var_name: str, default: str) -> Path:
@@ -248,7 +260,7 @@ def save_cluster_results(
     csv_path = output_dir / "cluster_results.csv"
 
     LOGGER.info("Writing cluster results to %s and %s", json_path, csv_path)
-    formatted = []
+    formatted: list[ClusterResult] = []
     for label, documents in sorted(cluster_to_documents.items(), key=lambda item: item[0]):
         try:
             numeric_label = int(label)

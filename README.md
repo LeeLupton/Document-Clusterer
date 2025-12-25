@@ -12,7 +12,10 @@ Requirements: Python 3.10+.
 python -m venv .venv
 source .venv/bin/activate
 ```
-
+Windows
+```
+.\.venv\SCripts\Activate
+```
 2) Install dependencies:
 
 ```bash

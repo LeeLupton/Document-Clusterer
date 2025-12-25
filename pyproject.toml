@@ -25,6 +25,24 @@ document-clusterer = "document_clusterer.cli:main"
 document-clusterer-clean = "document_clusterer.cli:clean_cli"
 document-clusterer-cluster = "document_clusterer.cli:cluster_cli"
 
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.10.0",
+    "pytest>=8.2.0",
+    "ruff>=0.6.1",
+]
+
 [tool.setuptools]
 package-dir = {"" = "."}
 packages = ["document_clusterer"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["document_clusterer", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

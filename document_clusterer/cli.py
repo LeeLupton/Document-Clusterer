@@ -7,7 +7,8 @@ import sys
 from pathlib import Path
 
 from . import clean_directory, cluster_documents, save_documents
-from .cleaning import CleaningOptions, env_path as cleaning_env_path
+from .cleaning import CleaningOptions
+from .cleaning import env_path as cleaning_env_path
 from .model import env_path as model_env_path
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -90,6 +91,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Destination for cleaned JSON output (default: %(default)s or OUTPUT_JSON)",
     )
 
+    hdbscan_min_samples_env = os.getenv("HDBSCAN_MIN_SAMPLES")
+    hdbscan_min_samples_default = (
+        int(hdbscan_min_samples_env) if hdbscan_min_samples_env is not None else None
+    )
     cluster_parser = subparsers.add_parser("cluster", help="Cluster cleaned stories")
     cluster_parser.add_argument(
         "--input-file",
@@ -141,7 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
     cluster_parser.add_argument(
         "--hdbscan-min-samples",
         type=int,
-        default=int(os.getenv("HDBSCAN_MIN_SAMPLES")) if os.getenv("HDBSCAN_MIN_SAMPLES") else None,
+        default=hdbscan_min_samples_default,
         help="Minimum samples for HDBSCAN (default: %(default)s or HDBSCAN_MIN_SAMPLES)",
     )
     cluster_parser.add_argument(
@@ -211,9 +216,7 @@ def main(argv: list[str] | None = None) -> None:
         if reduction_method == "none":
             reduction_method = None
 
-        hdbscan_min_samples = (
-            None if args.hdbscan_min_samples is None else int(args.hdbscan_min_samples)
-        )
+        hdbscan_min_samples = None if args.hdbscan_min_samples is None else int(args.hdbscan_min_samples)
         cluster_documents(
             data_path=args.input_file,
             stories_dir=args.stories_dir,

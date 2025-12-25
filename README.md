@@ -13,6 +13,13 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
+On Windows (PowerShell):
+
+```powershell
+py -m venv .venv
+.\\.venv\\Scripts\\Activate.ps1
+```
+
 2) Install dependencies:
 
 ```bash

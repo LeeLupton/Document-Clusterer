@@ -19,7 +19,7 @@ Windows
 2) Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 3) Download the NLTK data used by the cleaner (one-time):

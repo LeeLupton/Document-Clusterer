@@ -23,7 +23,7 @@ py -m venv .venv
 2) Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 3) Download the NLTK data used by the cleaner (one-time):
@@ -122,6 +122,10 @@ Common Windows tips:
 
 * Run commands from the repository root so relative paths like `data\sample_cleaned.json` resolve correctly.
 * Prefer backslashes in PowerShell (`data\sample`) and ensure the cleaned JSON exists (run the clean step before clustering).
+
+python -m document_clusterer.cli clean --stories-dir data\\sample --output data\\sample.json
+python -m document_clusterer.cli cluster --input-file data\\sample_cleaned.json --stories-dir data\\sample --output-dir clusteredDocuments\\sample
+```
 
 Environment variable defaults:
 
